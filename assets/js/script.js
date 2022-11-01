@@ -13,41 +13,36 @@ const initDevices = async () => {
     }
     const devices = await navigator.mediaDevices.enumerateDevices()
 
-    let deviceMap = {}
+    let audioDevices = []
+    let videoDevices = []
 
     devices.forEach((device, _) => {
         if (device.kind.includes("input")) {
-            let key = device.kind.includes('audio') ? 'audio' : 'video'
-            if (device.groupId in deviceMap) {
-                deviceMap[device.groupId] = {
-                    ...deviceMap[device.groupId],
-                    [key]: device
-                }
+            if (device.kind.includes('audio')) {
+                audioDevices = [
+                    ...audioDevices,
+                    device
+                ]
             } else {
-                deviceMap[device.groupId] = {
-                    [key]: device
-                }
+                videoDevices = [
+                    ...videoDevices,
+                    device
+                ]
             }
         }
     })
 
-    const sourceSelect = document.querySelector("#source")
+    const videoSource = document.querySelector("#video-source")
+    const audioSource = document.querySelector("#audio-source")
 
-    for (const groupId in deviceMap) {
-        const constraints = deviceMap[groupId]
+    videoDevices.forEach(constraint => {
+        videoSource.append(new DOMParser().parseFromString(`<option value='${JSON.stringify(constraint)}'>${constraint.label}</option>`, "text/html").firstChild.firstChild.nextSibling.firstChild)
+    })
+    audioDevices.forEach(constraint => {
+        audioSource.append(new DOMParser().parseFromString(`<option value='${JSON.stringify(constraint)}'>${constraint.label}</option>`, "text/html").firstChild.firstChild.nextSibling.firstChild)
+    })
 
-        let label = ""
-        let idx = 0
-        for (const constraint in constraints) {
-            const settings = constraints[constraint]
-
-            label += `${idx++ == 0 ? '' : ' + '}(${constraint.capitalize()}) ${settings.label}`
-        }
-
-        sourceSelect.append(new DOMParser().parseFromString(`<option value='${JSON.stringify(constraints)}'>${label}</option>`, "text/html").firstChild.firstChild.nextSibling.firstChild)
-    }
-
-    console.log(deviceMap)
+    console.log(videoDevices, audioDevices)
 }
 
 (function () {
@@ -56,35 +51,38 @@ const initDevices = async () => {
     initDevices()
 
     document.querySelector("#button").addEventListener('click', async () => {
-        const sourceSelect = document.querySelector("#source")
-        let constraints = sourceSelect.value
-        console.log(constraints)
-        if (constraints != "") {
-            constraints = JSON.parse(constraints)
-            if ('video' in constraints) {
-                constraints['video'] = {
-                    ...constraints['video'],
-                    width: {
-                        min: 1280,
-                        ideal: 1280,
-                        max: 1920,
-                    },
-                    height: {
-                        min: 720,
-                        ideal: 720,
-                        max: 1080
-                    },
-                    frameRate: 59.94
-                }
+        const videoSource = document.querySelector("#video-source")
+        const audioSource = document.querySelector("#audio-source")
+        let videoConstraint = videoSource.value
+        let audioConstraint = audioSource.value
+        console.log(videoConstraint, audioConstraint)
+        if (videoConstraint != "" && audioConstraint != "") {
+            videoConstraint = JSON.parse(videoConstraint)
+            audioConstraint = JSON.parse(audioConstraint)
+            videoConstraint = {
+                ...videoConstraint,
+                width: {
+                    min: 1280,
+                    ideal: 1280,
+                    max: 1920,
+                },
+                height: {
+                    min: 720,
+                    ideal: 720,
+                    max: 1080
+                },
+                frameRate: 59.94
+            }
+            
+            audioConstraint = {
+                ...audioConstraint,
+                echoCancellation: false
             }
 
-            if ('audio' in constraints) {
-                constraints['audio'] = {
-                    ...constraints['audio'],
-                    echoCancellation: false
-                }
-            }
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: videoConstraint,
+                audio: audioConstraint
+            });
             console.log(await navigator.mediaDevices.enumerateDevices())
             const video = document.getElementById('video');
             video.srcObject = stream;
