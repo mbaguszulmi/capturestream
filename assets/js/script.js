@@ -6,6 +6,11 @@ Object.defineProperty(String.prototype, 'capitalize', {
 });
 
 const initDevices = async () => {
+    try {
+        await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+    } catch (error) {
+        alert("Please grant access to Microphone and Camera")
+    }
     const devices = await navigator.mediaDevices.enumerateDevices()
 
     let deviceMap = {}
